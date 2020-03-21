@@ -2,9 +2,12 @@ package common.interfaces;
 
 import common.entity.HttpRequest;
 import common.entity.HttpResponse;
+import common.exception.BadRequestException;
+import common.exception.ForbiddenException;
 import common.exception.NotFoundException;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 
 /**
  * The interface Http handle.
@@ -39,18 +42,21 @@ public interface HttpProcessor<T> {
      *
      * @param httpRequest the http request
      * @return http response
-     * @throws IOException       the io exception
-     * @throws NotFoundException the not found exception
+     * @throws IOException         the io exception
+     * @throws NotFoundException   the not found exception
+     * @throws ForbiddenException  the forbidden exception
+     * @throws BadRequestException the bad request exception
      */
-    HttpResponse doRequest(HttpRequest httpRequest) throws IOException, NotFoundException;
+    HttpResponse doRequest(HttpRequest httpRequest) throws IOException, NotFoundException, ForbiddenException, BadRequestException;
 
     /**
      * Print response.
      *
      * @param t            the t
      * @param httpResponse the http response
+     * @throws IOException the io exception
      */
-    void printResponse(T t, HttpResponse httpResponse);
+    void printResponse(T t, HttpResponse httpResponse) throws IOException;
 
 }
 

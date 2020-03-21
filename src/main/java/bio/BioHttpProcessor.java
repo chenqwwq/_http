@@ -13,6 +13,8 @@ import java.io.*;
 import java.net.Socket;
 
 /**
+ * Bio形式的Http请求处理类
+ *
  * @author chen
  * @date 2020/3/9 上午10:03
  */

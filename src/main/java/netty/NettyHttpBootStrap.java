@@ -14,12 +14,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
  * @author chen
  * @date 2020 /3/8 上午10:44
  */
-public class NettyHttp implements HttpServerBootStrap {
-    /**
-     * 默认端口
-     */
-    private static final int PORT = 8080;
-
+public class NettyHttpBootStrap implements HttpServerBootStrap {
     /**
      * 服务端监听线程数
      */
@@ -42,7 +37,7 @@ public class NettyHttp implements HttpServerBootStrap {
         workerGroup = new NioEventLoopGroup(MAX_WORKER_THREAD_NUM);
     }
 
-    public NettyHttp() {
+    public NettyHttpBootStrap() {
         serverBootstrap.group(bossGroup,workerGroup)
                 .channel(NioServerSocketChannel.class)
                 .option(ChannelOption.SO_KEEPALIVE,true);

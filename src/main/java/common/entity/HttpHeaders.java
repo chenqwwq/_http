@@ -55,7 +55,17 @@ public class HttpHeaders {
      * @param value the value
      */
     public void addHeader(String key, String value) {
-        headers.put(key, value);
+        headers.put(key.trim(), value.trim());
+    }
+
+    public void addHeader(String str) {
+        final String[] split = str.split(SPLIT_KAT_VALUE);
+        if (split.length != 2) {
+            return;
+        }
+
+        headers.put(split[0].trim(), split[1].trim());
+
     }
 
     /**

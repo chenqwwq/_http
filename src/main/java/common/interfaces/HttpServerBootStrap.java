@@ -1,8 +1,6 @@
 package common.interfaces;
 
 import common.entity.HttpConfig;
-import common.exception.FileException;
-import lombok.extern.slf4j.Slf4j;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;

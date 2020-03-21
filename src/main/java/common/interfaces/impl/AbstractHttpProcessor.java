@@ -5,9 +5,12 @@ import common.ErrorPageCache;
 import common.GlobalContent;
 import common.entity.*;
 import common.enums.HttpStatusCode;
+import common.exception.BadRequestException;
+import common.exception.ForbiddenException;
 import common.exception.NotFoundException;
 import common.exception.StatusCodeException;
 import common.interfaces.HttpProcessor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 
@@ -34,7 +37,7 @@ public abstract class AbstractHttpProcessor<T> implements HttpProcessor<T> {
     /**
      * The Error page cache.
      */
-    protected ErrorPageCache errorPageCache;
+    protected static ErrorPageCache errorPageCache;
 
     /**
      * The Content type json.
@@ -58,23 +61,30 @@ public abstract class AbstractHttpProcessor<T> implements HttpProcessor<T> {
         this.httpConfig = httpConfig;
     }
 
+    @SneakyThrows
     @Override
     public void process(T i) {
         try {
             printResponse(i, doRequest(getRequest(i)));
-        } catch (StatusCodeException codeException) {
-            printResponse(i, errorPageCache.getHttpResponse(codeException.getCode()));
         } catch (Exception e) {
-            printResponse(i, errorPageCache.getHttpResponse(HttpStatusCode.INTERNAL_SERVER_ERROR));
+            printResponse(i, errorPageCache.getHttpResponse(e instanceof StatusCodeException ? ((StatusCodeException) e).getCode() : HttpStatusCode.INTERNAL_SERVER_ERROR));
         }
     }
 
     @Override
-    public HttpResponse doRequest(HttpRequest httpRequest) throws IOException, NotFoundException {
+    public HttpResponse doRequest(HttpRequest httpRequest) throws IOException, NotFoundException, ForbiddenException, BadRequestException {
+        if (httpRequest == null) {
+            throw new BadRequestException("http request not found");
+        }
         // 确定访问资源位置
         log.info("// ======= doRequest");
 
+        // 能到这一步的都是http的整个报文正确解析的
+
+        // 获取请求的资源地址
         final String uri = httpRequest.getHttpRequestLine().getUri();
+
+        // 配置http的返回头
         final HttpResponseLine httpResponseLine = new HttpResponseLine(GlobalContent.SUPPORT_HTTP_VERSION, HttpStatusCode.OK);
 
         // 获取请求的内容信息
@@ -97,10 +107,19 @@ public abstract class AbstractHttpProcessor<T> implements HttpProcessor<T> {
     /**
      * 读取文件内容
      */
-    private byte[] readFile(String path) throws IOException, NotFoundException {
-        File file = new File(ErrorPageCache.FILE_PATH + ("/".equals(path) ? "200.html" : path));
+    private byte[] readFile(String path) throws IOException, NotFoundException, ForbiddenException {
+        // 判断是否为文件服务器
+        final File file;
+        file = path.startsWith(httpConfig.getFilePre()) || path.startsWith("/" + httpConfig.getFilePre())
+                ? new File(httpConfig.getDir() + "/" + path.replaceFirst(httpConfig.getFilePre(), ""))
+                : new File(ErrorPageCache.FILE_PATH + ("/".equals(path) ? "/page/200.html" : path));
+
+        log.info("// ========== file path : [{}]", file.getPath());
         if (file.isDirectory() || !file.exists()) {
             throw new NotFoundException("error path,file not fount");
+        }
+        if (!file.canRead()) {
+            throw new ForbiddenException("Insufficient permissions");
         }
         try (final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
             byte[] res = new byte[(int) randomAccessFile.length()];

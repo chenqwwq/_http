@@ -1,1 +1,7 @@
 port: 8081
+
+# 如果是文件服务器，则
+dir: /home/chen/github
+
+# URL中如果以file开头，就是文件服务器，采用的dir的路径
+filePre: /file

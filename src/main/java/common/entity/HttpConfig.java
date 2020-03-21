@@ -17,4 +17,6 @@ public class HttpConfig {
     private String dir;
 
     private Integer port;
+
+    private String filePre;
 }
