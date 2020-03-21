@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.Iterator;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -34,76 +35,64 @@ public class NioHttpPoller implements Runnable {
     private int channelNum = 0;
 
     /**
+     * 几个轮询器之间共享的队列
+     */
+    private ConnectionQueue<SocketChannel> connectionQueue;
+
+    /**
      * 轮询器
      */
     private Selector selector;
 
+    private static final ExecutorService worker = Executors.newFixedThreadPool(3, new ThreadFactory() {
 
-    private static final ThreadPoolExecutor worker = new ThreadPoolExecutor(3,
-            3,
-            1,
-            TimeUnit.SECONDS,
-            new ArrayBlockingQueue<>(16),
-            new NioHttpPoller.NioHttpWorkerThreadFactory());
+        private final AtomicInteger atomicInteger = new AtomicInteger(1);
 
-    /**
-     * 几个轮询器之间共享的队列
-     */
-    private ConcurrentLinkedQueue<SocketChannel> socketChannels;
+        @Override
+        public Thread newThread(Runnable r) {
+            log.info("// ======== 新增一个IO工作线程");
+            return new Thread(r, "nio-http-processor-" + atomicInteger.getAndIncrement());
+        }
+    });
 
-    public NioHttpPoller(HttpConfig httpConfig, ConcurrentLinkedQueue<SocketChannel> queue) throws IOException {
+    public NioHttpPoller(HttpConfig httpConfig, Selector selector, ConnectionQueue<SocketChannel> queue) throws IOException {
         this.httpConfig = httpConfig;
-        this.selector = Selector.open();
-        this.socketChannels = queue;
+        this.selector = selector;
+        this.connectionQueue = queue;
         log.info("// ========= 新建轮询器成功");
     }
 
     @SneakyThrows
     @Override
     public void run() {
-        while (true) {
-            if (channelNum < MAX_CHANNELS_NUM && !socketChannels.isEmpty()) {
+        // 轮询线程就是无限循环的查询以及处理Key中的事件
+        while (!Thread.currentThread().isInterrupted()) {
+            if (channelNum < MAX_CHANNELS_NUM && !connectionQueue.isEmpty()) {
                 // 从队列中获取一个线程
-                final SocketChannel poll = socketChannels.poll();
+                final SocketChannel poll = connectionQueue.getConnection();
                 // 已非阻塞的形式运行
                 poll.configureBlocking(false);
                 // 注册到
-                poll.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+                poll.register(selector, SelectionKey.OP_READ);
                 channelNum++;
             }
 
-            if (selector.selectNow() <= 0) {
+            // select会阻塞到至少有一个通道准备就绪
+            // selectNow不会阻塞，会立即返回
+            if (selector.select() <= 0) {
                 continue;
             }
 
-            for (SelectionKey key : selector.selectedKeys()) {
-                worker.execute(new NioHttpProcessor(httpConfig, key));
+            // key中的事件会交给worker处理
+            final Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
+            // 因为提交给线程池处理相当于异步，所以关注的事件仍会持续发生
+            while (iterator.hasNext()) {
+                final SelectionKey next = iterator.next();
+                worker.execute(new NioHttpProcessor(httpConfig, next));
+                next.interestOps(next.interestOps() | 5);
+                log.info("添加一次任务");
+                iterator.remove();
             }
-        }
-    }
-
-
-    /**
-     * 工作线程的命名
-     */
-    private static class NioHttpWorkerThreadFactory implements ThreadFactory {
-
-        /**
-         * The Atomic integer.
-         */
-        private AtomicInteger atomicInteger;
-
-        /**
-         * Instantiates a new Bio http processor thread factory.
-         */
-        public NioHttpWorkerThreadFactory() {
-            this.atomicInteger = new AtomicInteger(1);
-        }
-
-        @Override
-        public Thread newThread(Runnable r) {
-            log.info("// ======== 新建一个工作线程，当前线程名称：[{}]", Thread.currentThread().getName());
-            return new Thread(r, Thread.currentThread().getName() + ":nio-http-worker-" + atomicInteger.getAndIncrement());
         }
     }
 }

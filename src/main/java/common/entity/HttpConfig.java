@@ -19,4 +19,6 @@ public class HttpConfig {
     private Integer port;
 
     private String filePre;
+
+    private Integer maxWait;
 }

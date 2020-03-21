@@ -2,19 +2,19 @@ package nio;
 
 import common.entity.*;
 import common.enums.HttpMethod;
+import common.enums.HttpStatusCode;
 import common.exception.BadRequestException;
+import common.exception.StatusCodeException;
 import common.interfaces.HttpProcessor;
 import common.interfaces.impl.AbstractHttpProcessor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 具体的工作线程，在Poller中轮询检测事件，并交给该事件执行
@@ -43,17 +43,25 @@ public class NioHttpProcessor extends AbstractHttpProcessor<SocketChannel> imple
     @SneakyThrows
     @Override
     public void run() {
+
+        final SocketChannel channel = (SocketChannel) selectionKey.channel();
         if (this.selectionKey.isReadable()) {
-            final HttpResponse httpResponse = doRequest(getRequest((SocketChannel) selectionKey.channel()));
+            log.info("// ========= 触发读事件");
+            HttpResponse httpResponse;
+            try {
+                httpResponse = doRequest(getRequest(channel));
+            } catch (Exception e) {
+                httpResponse = errorPageCache.getHttpResponse(e instanceof StatusCodeException ? ((StatusCodeException) e).getCode() : HttpStatusCode.INTERNAL_SERVER_ERROR);
+            }
             selectionKey.attach(httpResponse);
         }
         if (selectionKey.isWritable()) {
+            log.info("// ========= 触发写事件");
             final Object attachment = selectionKey.attachment();
             if (!(attachment instanceof HttpResponse)) {
                 return;
             }
-            printResponse((SocketChannel) selectionKey.channel(), (HttpResponse) attachment);
-            ((SocketChannel) selectionKey.channel()).shutdownInput();
+            printResponse(channel, (HttpResponse) attachment);
         }
 
     }
