@@ -61,6 +61,7 @@ public class NioHttpBootStrap implements HttpServerBootStrap {
 
         // 启动轮询线程
         poller.execute(new NioHttpPoller(config, open, connectionQueue));
+        selectors.addSelector(open);
 
         // 主线程只管将连接加入到并发安全的队列
         while (!Thread.currentThread().isInterrupted()) {

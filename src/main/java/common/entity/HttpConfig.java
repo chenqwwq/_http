@@ -21,4 +21,6 @@ public class HttpConfig {
     private String filePre;
 
     private Integer maxWait;
+
+    private Integer maxChannel;
 }

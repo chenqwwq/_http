@@ -1,4 +1,4 @@
-port: 8081
+port: 8082
 
 # 如果是文件服务器，则
 dir: /home/chen/github
@@ -8,3 +8,5 @@ filePre: /file
 
 # 请求等待队列的长度
 maxWait: 10
+
+maxChannel: 10

@@ -25,11 +25,6 @@ public class NioHttpPoller implements Runnable {
     private HttpConfig httpConfig;
 
     /**
-     * 每个轮询器最大持有的管道数目
-     */
-    private static final int MAX_CHANNELS_NUM = 10;
-
-    /**
      * 当前管道数目
      */
     private int channelNum = 0;
@@ -67,7 +62,8 @@ public class NioHttpPoller implements Runnable {
     public void run() {
         // 轮询线程就是无限循环的查询以及处理Key中的事件
         while (!Thread.currentThread().isInterrupted()) {
-            if (channelNum < MAX_CHANNELS_NUM && !connectionQueue.isEmpty()) {
+            // 每个线程处理完一轮
+            if (channelNum < httpConfig.getMaxChannel() && !connectionQueue.isEmpty()) {
                 // 从队列中获取一个线程
                 final SocketChannel poll = connectionQueue.getConnection();
                 // 已非阻塞的形式运行
@@ -79,7 +75,8 @@ public class NioHttpPoller implements Runnable {
 
             // select会阻塞到至少有一个通道准备就绪
             // selectNow不会阻塞，会立即返回
-            if (selector.select() <= 0) {
+            final int select = selector.select(5000);
+            if (select <= 0) {
                 continue;
             }
 
@@ -89,7 +86,9 @@ public class NioHttpPoller implements Runnable {
             while (iterator.hasNext()) {
                 final SelectionKey next = iterator.next();
                 worker.execute(new NioHttpProcessor(httpConfig, next));
-                next.interestOps(next.interestOps() | 5);
+                // 在当前 Poller 上移除已就绪的事件
+//                int interestOps = next.interestOps() & (~next.readyOps());
+                next.interestOps(next.interestOps() & (~next.readyOps()));
                 log.info("添加一次任务");
                 iterator.remove();
             }
