@@ -86,8 +86,7 @@ public class NioHttpPoller implements Runnable {
             while (iterator.hasNext()) {
                 final SelectionKey next = iterator.next();
                 worker.execute(new NioHttpProcessor(httpConfig, next));
-                // 在当前 Poller 上移除已就绪的事件
-//                int interestOps = next.interestOps() & (~next.readyOps());
+                // 取消对已准备好的事件的关注
                 next.interestOps(next.interestOps() & (~next.readyOps()));
                 log.info("添加一次任务");
                 iterator.remove();

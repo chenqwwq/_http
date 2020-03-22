@@ -54,7 +54,9 @@ public class NioHttpProcessor extends AbstractHttpProcessor<SocketChannel> imple
                 httpResponse = errorPageCache.getHttpResponse(e instanceof StatusCodeException ? ((StatusCodeException) e).getCode() : HttpStatusCode.INTERNAL_SERVER_ERROR);
             }
             selectionKey.attach(httpResponse);
+            // 重新注册写事件
             selectionKey.interestOps(SelectionKey.OP_WRITE);
+            selectionKey.selector().wakeup();
         }
         if (selectionKey.isWritable()) {
             log.info("// ========= 触发写事件");
@@ -63,7 +65,9 @@ public class NioHttpProcessor extends AbstractHttpProcessor<SocketChannel> imple
                 return;
             }
             printResponse(channel, (HttpResponse) attachment);
-            selectionKey.interestOps(SelectionKey.OP_READ);
+            // 直接关闭连接
+            selectionKey.cancel();
+            selectionKey.channel().close();
         }
 
     }
