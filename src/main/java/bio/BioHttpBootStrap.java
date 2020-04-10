@@ -23,71 +23,84 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 public class BioHttpBootStrap implements HttpServerBootStrap {
 
-    private static BioHttpProcessor bioHttpProcessor;
-
-    private static final ThreadPoolExecutor th = new ThreadPoolExecutor(1,
-            10,
-            1,
-            TimeUnit.SECONDS,
-            new ArrayBlockingQueue<>(16),
-            new BioHttpProcessorThreadFactory());
-
+    private static final HttpServer INSTANCE = new HttpServer();
 
     @Override
-    public void start(HttpConfig config) throws Exception {
-        // 初始化处理器
-        bioHttpProcessor = new BioHttpProcessor(config);
-        // 创建对应的socket
-        ServerSocket socket = new ServerSocket(config.getPort());
-        log.info("// ==========  start bio http socket");
-        while (true) {
-            Socket accept = socket.accept();
-            log.info("// ========== accept server");
-            th.execute(new HttpTask(accept));
-        }
+    public void start() throws Exception {
+        INSTANCE.start();;
     }
 
+    private static final class HttpServer implements HttpServerBootStrap {
 
-    private static class HttpTask implements Runnable {
+        private HttpServer(){};
 
-        /**
-         * The Socket.
-         */
-        Socket socket;
+        private static BioHttpProcessor bioHttpProcessor;
 
-        /**
-         * Instantiates a new Bio http processor runnable.
-         *
-         * @param socket the socket
-         */
-        public HttpTask(Socket socket) {
-            this.socket = socket;
-        }
+        private static final ThreadPoolExecutor th = new ThreadPoolExecutor(1,
+                10,
+                1,
+                TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(16),
+                new BioHttpProcessorThreadFactory());
+
 
         @Override
-        public void run() {
-            bioHttpProcessor.process(socket);
-        }
-    }
-
-
-    private static class BioHttpProcessorThreadFactory implements ThreadFactory {
-
-        /**
-         * The Atomic integer.
-         */
-        AtomicInteger atomicInteger;
-
-        /**
-         * Instantiates a new Bio http processor thread factory.
-         */
-        public BioHttpProcessorThreadFactory() {
-            this.atomicInteger = new AtomicInteger(1);
+        public void start(HttpConfig config) throws Exception {
+            // 初始化处理器
+            bioHttpProcessor = new BioHttpProcessor(config);
+            // 创建对应的socket
+            try (ServerSocket socket = new ServerSocket(config.getPort())) {
+                log.info("// ==========  start bio http socket");
+                while (!Thread.currentThread().isInterrupted()) {
+                    Socket accept = socket.accept();
+                    log.info("// ========== accept server");
+                    th.execute(new HttpTask(accept));
+                }
+            }
         }
 
-        @Override
-        public Thread newThread(Runnable r) {
-            return new Thread(r, "bio_http_processor-" + atomicInteger.getAndIncrement());
+
+        private static class HttpTask implements Runnable {
+
+            /**
+             * The Socket.
+             */
+            Socket socket;
+
+            /**
+             * Instantiates a new Bio http processor runnable.
+             *
+             * @param socket the socket
+             */
+            public HttpTask(Socket socket) {
+                this.socket = socket;
+            }
+
+            @Override
+            public void run() {
+                bioHttpProcessor.process(socket);
+            }
+        }
+
+
+        private static class BioHttpProcessorThreadFactory implements ThreadFactory {
+
+            /**
+             * The Atomic integer.
+             */
+            AtomicInteger atomicInteger;
+
+            /**
+             * Instantiates a new Bio http processor thread factory.
+             */
+            public BioHttpProcessorThreadFactory() {
+                this.atomicInteger = new AtomicInteger(1);
+            }
+
+            @Override
+            public Thread newThread(Runnable r) {
+                return new Thread(r, "bio_http_processor-" + atomicInteger.getAndIncrement());
+            }
         }
     }
 

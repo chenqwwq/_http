@@ -25,7 +25,7 @@ public class NioHttpPoller implements Runnable {
     private HttpConfig httpConfig;
 
     /**
-     * 当前管道数目
+     * 当前Selector的管道数目
      */
     private int channelNum = 0;
 
@@ -36,9 +36,13 @@ public class NioHttpPoller implements Runnable {
 
     /**
      * 轮询器
+     * 每个轮询线程绑定一个轮询器，处理轮询器上的请求
      */
     private Selector selector;
 
+    /**
+     * IO线程池,负责处理各IO事件
+     */
     private static final ExecutorService worker = Executors.newFixedThreadPool(3, new ThreadFactory() {
 
         private final AtomicInteger atomicInteger = new AtomicInteger(1);
@@ -62,7 +66,7 @@ public class NioHttpPoller implements Runnable {
     public void run() {
         // 轮询线程就是无限循环的查询以及处理Key中的事件
         while (!Thread.currentThread().isInterrupted()) {
-            // 每个线程处理完一轮
+            // 每个线程处理完一轮,尝试获取线程
             if (channelNum < httpConfig.getMaxChannel() && !connectionQueue.isEmpty()) {
                 // 从队列中获取一个线程
                 final SocketChannel poll = connectionQueue.getConnection();

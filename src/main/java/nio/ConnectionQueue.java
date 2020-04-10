@@ -1,6 +1,7 @@
 package nio;
 
 import common.entity.HttpConfig;
+import common.exception.InternalException;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -38,7 +39,9 @@ public class ConnectionQueue<T> {
     }
 
     public void addConnection(T entry) {
-        connectionQueue.offer(entry);
+        if (!connectionQueue.offer(entry)) {
+            throw new InternalException();
+        }
     }
 
 }

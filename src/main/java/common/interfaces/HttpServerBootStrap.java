@@ -10,6 +10,7 @@ import java.io.IOException;
 
 /**
  * The interface Http boot strap.
+ * 因为包含很多重量级集合对象，建议单例实现
  *
  * @author chen
  * @date 2020 /3/8 上午10:45
@@ -27,7 +28,7 @@ public interface HttpServerBootStrap {
      * @param config the config
      * @throws Exception the exception
      */
-    void start(HttpConfig config) throws Exception;
+    default void start(HttpConfig config) throws Exception{};
 
     /**
      * Start.
