@@ -73,7 +73,7 @@ public class NioHttpBootStrap implements HttpServerBootStrap {
         final Selector open = Selector.open();
 
         // 启动轮询线程
-//        poller.execute(new NioHttpPoller(config, open, connectionQueue));
+        poller.execute(new NioHttpPoller(config, open, connectionQueue));
         selectors.addSelector(open);
 
         // 主线程只管将连接加入到并发安全的队列
@@ -82,9 +82,6 @@ public class NioHttpBootStrap implements HttpServerBootStrap {
             log.info("// ======= 新增一个连接");
             connectionQueue.addConnection(accept);
             log.info("// ======= 当前连接数为[{}]",connectionQueue.size());
-            if(connectionQueue.size() == 5){
-                poller.execute(new NioHttpPoller(config, open, connectionQueue));
-            }
             // selector.select()方法是阻塞的
             // 因为有新任务进来的就直接获取下个selector并让select()方法直接返回
             selectors.getNextSelector().wakeup();
