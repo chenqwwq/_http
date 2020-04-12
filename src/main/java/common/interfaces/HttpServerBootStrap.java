@@ -28,7 +28,7 @@ public interface HttpServerBootStrap {
      * @param config the config
      * @throws Exception the exception
      */
-    default void start(HttpConfig config) throws Exception{};
+    default void start(HttpConfig config) throws Exception {};
 
     /**
      * Start.
@@ -46,9 +46,9 @@ public interface HttpServerBootStrap {
      * @throws IOException the io exception
      */
     default HttpConfig loadConfig() throws IOException {
-        File file = new File(configFilePath);
+        final File file = new File(configFilePath);
         if (!file.isFile() || !file.canRead()) {
-            throw new FileNotFoundException("config file error,please confirm directory " + file.getPath());
+            throw new FileNotFoundException("config file error,please confirm directory, path : "  + file.getPath());
         }
         try (final FileInputStream input = new FileInputStream(file);) {
             return new Yaml().loadAs(input, HttpConfig.class);

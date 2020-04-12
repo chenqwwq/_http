@@ -25,7 +25,7 @@ public class NioHttpPoller implements Runnable {
     private HttpConfig httpConfig;
 
     /**
-     * 当前Selector的管道数目
+     * 当前管道数目
      */
     private int channelNum = 0;
 

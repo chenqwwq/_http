@@ -31,6 +31,10 @@ public class ConnectionQueue<T> {
         return connectionQueue.isEmpty();
     }
 
+    public int size(){
+        return connectionQueue.size();
+    }
+
     /**
      * 对外提供的一个包装类，最终还是调用的{@link BlockingQueue#poll()}
      */
@@ -39,9 +43,7 @@ public class ConnectionQueue<T> {
     }
 
     public void addConnection(T entry) {
-        if (!connectionQueue.offer(entry)) {
-            throw new InternalException();
-        }
+        connectionQueue.offer(entry);
     }
 
 }
